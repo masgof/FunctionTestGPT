@@ -1,12 +1,12 @@
 from flask import Flask, request, jsonify
-from anthropic import Anthropic
+import anthropic
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
-anthropic = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+claude = anthropic.Client(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 @app.route('/generate-image', methods=['POST'])
 def generate_image():
@@ -15,17 +15,14 @@ def generate_image():
     
     try:
         # Process through Claude
-        message = anthropic.messages.create(
-            model="claude-3-sonnet-20240229",
-            max_tokens=1000,
-            messages=[{
-                "role": "user",
-                "content": f"How many letters (excluding spaces and special characters) are in this golf course name: {text}? Return just the number, nothing else."
-            }]
+        completion = claude.completion(
+            prompt=f"{anthropic.HUMAN_PROMPT} How many letters (excluding spaces and special characters) are in this golf course name: {text}? Return just the number, nothing else.{anthropic.AI_PROMPT}",
+            model="claude-2",
+            max_tokens_to_sample=1000,
         )
         
         # Get the response from Claude
-        count = message.content[0].text
+        count = completion.completion
         
         return jsonify({
             "text": text,
