@@ -1,50 +1,40 @@
 from flask import Flask, request, jsonify
-import json
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.route('/generate-image', methods=['POST'])
 def generate_image():
+    data = request.get_json()
+    text = data['text']  # Get golf course name from ElevenLabs
+    
     try:
-        # Print request details for debugging
-        print("Headers:", dict(request.headers))
-        print("Data:", request.get_data().decode('utf-8'))
+        # Process through ChatGPT
+        completion = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Given a golf course name, return only the number of letters (excluding spaces and special characters). Return just the number, nothing else."},
+                {"role": "user", "content": text}
+            ]
+        )
         
-        # Try different ways to get the data
-        try:
-            data = request.get_json(force=True)  # Force JSON parsing
-        except:
-            try:
-                data = json.loads(request.get_data().decode('utf-8'))
-            except:
-                data = request.form.to_dict()
-
-        print("Processed data:", data)  # Debug print
+        # Get the response from ChatGPT
+        count = completion.choices[0].message.content
         
-        # Get text from various possible locations
-        text = None
-        if isinstance(data, dict):
-            text = data.get('text') or data.get('transcribed_text')
-        
-        if not text and request.form:
-            text = request.form.get('text') or request.form.get('transcribed_text')
-            
-        if not text:
-            return jsonify({"error": "No text found in request"}), 400
-            
-        # Count letters
-        letter_count = len([char for char in text if char.isalpha()])
-        
-        response = {
-            "golf_club": text,
-            "letter_count": letter_count
-        }
-        print("Sending response:", response)  # Debug print
-        return jsonify(response)
+        return jsonify({
+            "text": text,
+            "count": count
+        })
         
     except Exception as e:
-        print(f"Error processing request: {str(e)}")
+        print(f"Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3000)
+    port = int(os.getenv("PORT", 3000))
+    app.run(host='0.0.0.0', port=port)
