@@ -8,26 +8,29 @@ load_dotenv()
 app = Flask(__name__)
 client = Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
 
+@app.route('/')
+def home():
+    return jsonify({"message": "API is running. Use /generate-image endpoint for requests."})
+
 @app.route('/generate-image', methods=['POST'])
 def generate_image():
-    data = request.get_json()
-    text = data['text']  # Get golf course name from ElevenLabs
-    
     try:
-        # Process through Claude
-        completion = client.completions.create(
-            model="claude-2",
-            prompt=f"{HUMAN_PROMPT}Count only the letters (excluding spaces and special characters) in this golf course name: {text}. Return just the number, nothing else.{AI_PROMPT}",
-            max_tokens_to_sample=100,
-            temperature=0
-        )
+        data = request.get_json()
+        print("Received data:", data)  # Debug print
         
-        # Get the response from Claude
-        count = completion.completion.strip()
+        if not data or 'text' not in data:
+            return jsonify({"error": "Missing text field"}), 400
+            
+        text = data['text']
+        print(f"Processing text: {text}")  # Debug print
+        
+        # For now, let's just return a simple count without Claude
+        # to verify the endpoint is working
+        letter_count = len([char for char in text if char.isalpha()])
         
         return jsonify({
             "text": text,
-            "count": count
+            "count": letter_count
         })
         
     except Exception as e:
